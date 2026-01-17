@@ -172,6 +172,12 @@ body {
     background: rgba(255, 255, 255, 0.1);
 }
 
+/* Fix for Select Options in Dark Mode */
+.form-input option {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+}
+
 /* Loading */
 .loading-screen {
     position: fixed;

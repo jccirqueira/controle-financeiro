@@ -136,13 +136,26 @@ async function loadDashboardData() {
     // Debug
     console.log('Fetching dashboard data for:', startOfMonth, 'to', endOfMonth);
 
+    // Fetch Transactions with Category Name
     const { data: transactions, error } = await supabase
         .from('transactions')
-        .select('*')
+        .select(`
+            *,
+            categories (
+                name
+            )
+        `)
         .gte('date', startOfMonth)
         .lte('date', endOfMonth);
 
     if (error) console.error('Error fetching transactions:', error);
+
+    // Fetch User Goal
+    let goal = 2000; // Default
+    const { data: profile } = await supabase.from('profiles').select('monthly_goal').eq('id', user.id).single();
+    if (profile && profile.monthly_goal) {
+        goal = Number(profile.monthly_goal);
+    }
 
     // Calc Totals
     const income = transactions ? transactions.filter(t => t.type === 'income').reduce((acc, t) => acc + Number(t.amount), 0) : 0;
@@ -154,10 +167,10 @@ async function loadDashboardData() {
     document.getElementById('summaryExpense').textContent = expense.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     document.getElementById('summaryBalance').textContent = balance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-    // Update Goal (Static 2000 for now)
-    const goal = 2000;
+    // Update Goal
     const percent = Math.min((expense / goal) * 100, 100);
     document.getElementById('goalSpent').textContent = expense.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    document.querySelector('.glass-card.col-span-2 strong:nth-child(2)').textContent = goal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); // Update Goal Text
     document.getElementById('goalProgress').style.width = `${percent}%`;
     document.getElementById('goalText').textContent = `${percent.toFixed(0)}% da meta consumida`;
 
@@ -181,8 +194,15 @@ async function loadDashboardData() {
 }
 
 function renderCharts(transactions) {
-    const ctxFlow = document.getElementById('cashFlowChart').getContext('2d');
-    const ctxExp = document.getElementById('expensesChart').getContext('2d');
+    // If chart instances exist, destroy them to avoid overlap/memory leaks (simple implementation)
+    // For this simple usage, we can check if the canvas has an instance or just clear logic. 
+    // Chart.js 3+ helps, but let's be safe.
+
+    const ctxFlow = document.getElementById('cashFlowChart');
+    const ctxExp = document.getElementById('expensesChart');
+
+    if (window.myFlowChart) window.myFlowChart.destroy();
+    if (window.myExpChart) window.myExpChart.destroy();
 
     // Prepare Data
     const income = transactions.filter(t => t.type === 'income').reduce((acc, t) => acc + Number(t.amount), 0);
@@ -191,20 +211,16 @@ function renderCharts(transactions) {
     const expenses = transactions.filter(t => t.type === 'expense');
     const catMap = {};
     expenses.forEach(t => {
-        const cat = t.category_name || 'Outros';
-        catMap[cat] = (catMap[cat] || 0) + Number(t.amount);
+        // Use joined category name OR fallback to description OR 'Sem categoria'
+        const catName = t.categories?.name || 'Outros';
+        catMap[catName] = (catMap[catName] || 0) + Number(t.amount);
     });
 
     const labels = Object.keys(catMap);
     const data = Object.values(catMap);
 
-    if (labels.length === 0) {
-        labels.push('Sem dados');
-        data.push(1); // Placeholder
-    }
-
-    // Cash Flow (Bar Chart for simplicty of Month View)
-    new Chart(ctxFlow, {
+    // Cash Flow (Bar Chart)
+    window.myFlowChart = new Chart(ctxFlow, {
         type: 'bar',
         data: {
             labels: ['Mês Atual'],
@@ -225,12 +241,12 @@ function renderCharts(transactions) {
     });
 
     // Pie Chart
-    new Chart(ctxExp, {
+    window.myExpChart = new Chart(ctxExp, {
         type: 'doughnut',
         data: {
-            labels: labels,
+            labels: labels.length ? labels : ['Sem dados'],
             datasets: [{
-                data: data,
+                data: data.length ? data : [1],
                 backgroundColor: ['#f59e0b', '#6366f1', '#10b981', '#ec4899', '#64748b'],
                 borderWidth: 0
             }]
@@ -238,8 +254,9 @@ function renderCharts(transactions) {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { position: 'right', labels: { color: '#94a3b8' } } }
+            plugins: {
+                legend: { position: 'right', labels: { color: '#94a3b8' } }
+            }
         }
     });
 }
-

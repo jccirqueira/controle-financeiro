@@ -15,11 +15,20 @@ export default function SettingsView() {
                 <!-- Profile & Theme -->
                 <div class="glass-card">
                     <h3 class="mb-4">Perfil & Preferências</h3>
-                    <div class="flex-center" style="justify-content: space-between;">
+                    <div class="flex-center" style="justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
                         <div>
                             <p class="text-muted">Usuário logado</p>
                             <p class="text-lg" id="userEmail">Carregando...</p>
                         </div>
+                        
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label class="form-label">Meta de Gastos Mensal (R$)</label>
+                            <div class="flex-center" style="gap: 0.5rem;">
+                                <input type="number" id="monthlyGoalInput" class="form-input" style="width: 150px;">
+                                <button class="btn btn-primary" id="saveGoalBtn">Salvar</button>
+                            </div>
+                        </div>
+
                         <div class="flex-center" style="gap: 1rem;">
                             <button class="btn btn-ghost" id="themeToggleSetting">Alternar Tema</button>
                             <button class="btn btn-primary" style="background: var(--danger-color);" onclick="window.doLogout()"><i class="ri-logout-box-r-line"></i> Sair</button>
@@ -96,6 +105,20 @@ export async function init() {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
         document.getElementById('userEmail').textContent = user.email;
+
+        // Load Goal
+        const { data: profile } = await supabase.from('profiles').select('monthly_goal').eq('id', user.id).single();
+        if (profile) {
+            document.getElementById('monthlyGoalInput').value = profile.monthly_goal || 2000;
+        }
+
+        // Save Goal
+        document.getElementById('saveGoalBtn').addEventListener('click', async () => {
+            const newGoal = document.getElementById('monthlyGoalInput').value;
+            const { error } = await supabase.from('profiles').update({ monthly_goal: newGoal }).eq('id', user.id);
+            if (error) alert('Erro ao salvar meta: ' + error.message);
+            else alert('Meta atualizada com sucesso!');
+        });
 
         // Admin Check (Simple email check for client-side visual, real security is RLS)
         // Hardcoded Admin Email from requirements

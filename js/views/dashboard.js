@@ -3,11 +3,19 @@ import { logout, getUser } from '../auth.js';
 export default function DashboardView() {
     return `
         <div class="dashboard-layout fade-in">
-            <header class="glass-card flex-center" style="justify-content: space-between; padding: 1rem 2rem; margin-bottom: 2rem;">
+            <header class="glass-card flex-center" style="justify-content: space-between; padding: 1rem 2rem; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
                 <div class="flex-center" style="gap: 1rem;">
                     <i class="ri-donut-chart-fill" style="font-size: 1.5rem; color: var(--accent-color);"></i>
                     <h2 class="text-lg">Cacir</h2>
                 </div>
+                
+                <nav class="flex-center" style="gap: 0.5rem;">
+                    <button class="btn btn-ghost" onclick="window.location.hash='receitas'" title="Receitas"><i class="ri-arrow-up-circle-line" style="color: var(--success-color)"></i> <span class="hide-mobile">Receitas</span></button>
+                    <button class="btn btn-ghost" onclick="window.location.hash='despesas'" title="Despesas"><i class="ri-arrow-down-circle-line" style="color: var(--danger-color)"></i> <span class="hide-mobile">Despesas</span></button>
+                    <button class="btn btn-ghost" onclick="window.location.hash='energia'" title="Energia"><i class="ri-flashlight-line" style="color: var(--warning-color)"></i> <span class="hide-mobile">Energia</span></button>
+                    <button class="btn btn-ghost" onclick="window.location.hash='configuracoes'" title="Configurações"><i class="ri-settings-3-line"></i> <span class="hide-mobile">Config.</span></button>
+                </nav>
+
                 <div class="flex-center" style="gap: 1rem;">
                     <button class="btn btn-ghost" id="themeToggle"><i class="ri-moon-line"></i></button>
                     <button class="btn btn-ghost" id="logoutBtn"><i class="ri-logout-box-r-line"></i> Sair</button>
@@ -173,3 +181,4 @@ function renderCharts() {
         }
     });
 }
+

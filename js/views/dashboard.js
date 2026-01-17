@@ -18,6 +18,7 @@ export default function DashboardView() {
                 </nav>
 
                 <div class="flex-center" style="gap: 1rem;">
+                    <button class="btn btn-ghost" id="refreshBtn" title="Atualizar Dados"><i class="ri-refresh-line"></i></button>
                     <button class="btn btn-ghost" id="themeToggle"><i class="ri-moon-line"></i></button>
                     <button class="btn btn-ghost" id="logoutBtn"><i class="ri-logout-box-r-line"></i> Sair</button>
                 </div>
@@ -98,6 +99,10 @@ export async function init() {
     const user = await getUser();
     if (!user) console.warn('No user found');
 
+    document.getElementById('refreshBtn')?.addEventListener('click', () => {
+        loadDashboardData();
+    });
+
     document.getElementById('logoutBtn').addEventListener('click', async () => {
         await logout();
     });
@@ -120,15 +125,24 @@ async function loadDashboardData() {
     if (!supabase || !user) return;
 
     // 1. Transactions (Current Month)
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString();
+    const date = new Date();
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
 
-    const { data: transactions } = await supabase
+    // Construct simplified date strings for Postgres DATE column comparison
+    const startOfMonth = `${y}-${m}-01`;
+    const endOfMonth = `${y}-${m}-31`; // Works for basic filtering
+
+    // Debug
+    console.log('Fetching dashboard data for:', startOfMonth, 'to', endOfMonth);
+
+    const { data: transactions, error } = await supabase
         .from('transactions')
         .select('*')
         .gte('date', startOfMonth)
         .lte('date', endOfMonth);
+
+    if (error) console.error('Error fetching transactions:', error);
 
     // Calc Totals
     const income = transactions ? transactions.filter(t => t.type === 'income').reduce((acc, t) => acc + Number(t.amount), 0) : 0;
@@ -148,7 +162,12 @@ async function loadDashboardData() {
     document.getElementById('goalText').textContent = `${percent.toFixed(0)}% da meta consumida`;
 
     // 2. Energy
-    const { data: energy } = await supabase.from('energy_logs').select('*').order('created_at', { ascending: false }).limit(1);
+    const { data: energy } = await supabase
+        .from('energy_logs')
+        .select('*')
+        .order('year', { ascending: false })
+        .order('month', { ascending: false })
+        .limit(1);
     const lastEnergy = energy && energy.length ? energy[0] : null;
     const savings = lastEnergy ? Number(lastEnergy.savings_percent).toFixed(0) + '%' : '0%';
     const savingsAmount = lastEnergy ? lastEnergy.savings_amount : 0;

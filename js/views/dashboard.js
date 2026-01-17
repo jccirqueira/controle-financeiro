@@ -1,4 +1,5 @@
 import { logout, getUser } from '../auth.js';
+import { getSupabase } from '../supabase.js';
 
 export default function DashboardView() {
     return `
@@ -114,74 +115,18 @@ export async function init() {
         themeBtn.innerHTML = next === 'dark' ? '<i class="ri-moon-line"></i>' : '<i class="ri-sun-line"></i>';
     });
 
-    // Initialize Charts
-    renderCharts();
+    // Data Fetching
+    await loadDashboardData();
 }
 
-function renderCharts() {
-    const ctxFlow = document.getElementById('cashFlowChart').getContext('2d');
-    const ctxExp = document.getElementById('expensesChart').getContext('2d');
-
-    // Cash Flow (Area Chart)
-    new Chart(ctxFlow, {
-        type: 'line',
-        data: {
-            labels: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'],
-            datasets: [
-                {
-                    label: 'Receitas',
-                    data: [4000, 4200, 4500, 4100, 4600, 4800],
-                    borderColor: '#10b981', // Emerald 500
-                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                    fill: true,
-                    tension: 0.4
-                },
-                {
-                    label: 'Despesas',
-                    data: [2000, 1800, 2500, 2100, 1900, 2200],
-                    borderColor: '#ef4444', // Red 500
-                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                    fill: true,
-                    tension: 0.4
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { labels: { color: '#94a3b8' } }
-            },
-            scales: {
-                y: { grid: { color: 'rgba(255, 255, 255, 0.1)' }, ticks: { color: '#94a3b8' } },
-                x: { grid: { color: 'rgba(255, 255, 255, 0.1)' }, ticks: { color: '#94a3b8' } }
-            }
-        }
-    });
-
-    // Expenses (Doughnut)
-    new Chart(ctxExp, {
-        type: 'doughnut',
-        data: {
-            labels: ['Alimentação', 'Moradia', 'Transporte', 'Lazer', 'Outros'],
-            datasets: [{
-                data: [30, 40, 15, 10, 5],
-                backgroundColor: [
-                    '#f59e0b', // Amber
-                    '#6366f1', // Indigo
-                    '#10b981', // Emerald
-                    '#ec4899', // Pink
-                    '#64748b'  // Slate
-                ],
-                borderWidth: 0
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { position: 'right', labels: { color: '#94a3b8' } }
-            }
-        }
-    });
+async function loadDashboardData() {
+    const supabase = getSupabase(); // Assumes getSupabase is imported (it wasn't in original init, need to fix imports or use window if expose). Wait, dashboard uses imports.
+    // Need to import getSupabase at top? Yes line 1 calls getUser.
+    // But getSupabase is not imported. It is imported in line 1 "import { logout, getUser } from '../auth.js';".
+    // Wait, auth.js does not export getSupabase.
+    // I need to import getSupabase from '../supabase.js'.
 }
+// Wait, I need to check imports first.
+// Original file line 1: import { logout, getUser } from '../auth.js';
+// So I need to update imports first.
+

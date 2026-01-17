@@ -39,10 +39,10 @@ export default function SettingsView() {
                  <!-- Export Data -->
                 <div class="glass-card">
                     <h3 class="mb-4">Exportar Dados</h3>
-                    <p class="text-muted mb-4">Baixe seus registros em formato CSV para Excel.</p>
+                    <p class="text-muted mb-4">Baixe seus registros em formato XLS para Excel.</p>
                     <div class="flex-center" style="justify-content: flex-start; gap: 1rem;">
-                        <button class="btn btn-ghost" id="exportReceitas"><i class="ri-download-line"></i> Receitas (CSV)</button>
-                        <button class="btn btn-ghost" id="exportDespesas"><i class="ri-download-line"></i> Despesas (CSV)</button>
+                        <button class="btn btn-ghost" id="exportReceitas"><i class="ri-download-line"></i> Receitas (XLS)</button>
+                        <button class="btn btn-ghost" id="exportDespesas"><i class="ri-download-line"></i> Despesas (XLS)</button>
                     </div>
                 </div>
 
@@ -114,10 +114,21 @@ export async function init() {
 
         // Save Goal
         document.getElementById('saveGoalBtn').addEventListener('click', async () => {
-            const newGoal = document.getElementById('monthlyGoalInput').value;
-            const { error } = await supabase.from('profiles').update({ monthly_goal: newGoal }).eq('id', user.id);
-            if (error) alert('Erro ao salvar meta: ' + error.message);
-            else alert('Meta atualizada com sucesso!');
+            const newGoal = Number(document.getElementById('monthlyGoalInput').value); // Ensure number
+
+            // Use upsert to handle cases where profile row might not exist yet
+            const { error } = await supabase.from('profiles').upsert({
+                id: user.id,
+                monthly_goal: newGoal,
+                email: user.email // Ensure email is present if creating
+            });
+
+            if (error) {
+                console.error('Save goal error:', error);
+                alert('Erro ao salvar meta: ' + error.message);
+            } else {
+                alert('Meta atualizada com sucesso!');
+            }
         });
 
         // Admin Check (Simple email check for client-side visual, real security is RLS)
@@ -141,8 +152,8 @@ export async function init() {
     };
 
     // Exports
-    document.getElementById('exportReceitas').addEventListener('click', () => exportCSV('income', 'receitas'));
-    document.getElementById('exportDespesas').addEventListener('click', () => exportCSV('expense', 'despesas'));
+    document.getElementById('exportReceitas').addEventListener('click', () => exportData('income', 'receitas'));
+    document.getElementById('exportDespesas').addEventListener('click', () => exportData('expense', 'despesas'));
 
     // Reset Data Logic
     document.getElementById('resetDataBtn').addEventListener('click', async () => {
@@ -161,20 +172,36 @@ export async function init() {
         window.location.hash = 'dashboard';
     });
 
-    async function exportCSV(type, filename) {
+    async function exportData(type, filename) {
         const { data } = await supabase.from('transactions').select('*').eq('type', type);
         if (!data || !data.length) return alert('Sem dados para exportar');
 
-        const headers = Object.keys(data[0]).join(',');
-        const rows = data.map(obj => Object.values(obj).map(v => `"${v}"`).join(',')).join('\n');
-        const csvContent = "data:text/csv;charset=utf-8," + headers + '\n' + rows;
+        // Create HTML Table for Excel
+        let table = `
+            <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+            <head><meta charset="UTF-8"></head>
+            <body>
+            <table border="1">
+                <thead>
+                    <tr>${Object.keys(data[0]).map(h => `<th style="background-color: #f0f0f0;">${h}</th>`).join('')}</tr>
+                </thead>
+                <tbody>
+                    ${data.map(row => `<tr>${Object.values(row).map(c => `<td>${c ?? ''}</td>`).join('')}</tr>`).join('')}
+                </tbody>
+            </table>
+            </body></html>
+        `;
+
+        const blob = new Blob([table], { type: 'application/vnd.ms-excel' });
+        const url = URL.createObjectURL(blob);
 
         const link = document.createElement("a");
-        link.setAttribute("href", encodeURI(csvContent));
-        link.setAttribute("download", `${filename}_export.csv`);
+        link.setAttribute("href", url);
+        link.setAttribute("download", `${filename}_export.xls`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        URL.revokeObjectURL(url);
     }
 }
 

@@ -120,77 +120,98 @@ export async function init() {
 }
 
 async function loadDashboardData() {
-    const supabase = getSupabase();
-    const user = await getUser();
-    if (!supabase || !user) return;
+    try {
+        const supabase = getSupabase();
+        const user = await getUser();
+        if (!supabase || !user) return;
 
-    // 1. Transactions (Current Month)
-    const date = new Date();
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
+        // 1. Transactions (Current Month)
+        const date = new Date();
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
 
-    // Construct simplified date strings for Postgres DATE column comparison
-    const startOfMonth = `${y}-${m}-01`;
-    const endOfMonth = `${y}-${m}-31`; // Works for basic filtering
+        // Construct simplified date strings for Postgres DATE column comparison
+        const startOfMonth = `${y}-${m}-01`;
+        const endOfMonth = `${y}-${m}-31`; // Works for basic filtering
 
-    // Debug
-    console.log('Fetching dashboard data for:', startOfMonth, 'to', endOfMonth);
+        console.log('Fetching dashboard data for:', startOfMonth, 'to', endOfMonth);
 
-    // Fetch Transactions with Category Name
-    const { data: transactions, error } = await supabase
-        .from('transactions')
-        .select(`
-            *,
-            categories (
-                name
-            )
-        `)
-        .gte('date', startOfMonth)
-        .lte('date', endOfMonth);
+        // Fetch Transactions with Category Name
+        const { data: transactions, error } = await supabase
+            .from('transactions')
+            .select('*, categories(name)') // Simplified single line query
+            .gte('date', startOfMonth)
+            .lte('date', endOfMonth);
 
-    if (error) console.error('Error fetching transactions:', error);
+        if (error) {
+            console.error('Error fetching transactions:', error);
+            // Don't throw, just log so partial data can render
+        }
 
-    // Fetch User Goal
-    let goal = 2000; // Default
-    const { data: profile } = await supabase.from('profiles').select('monthly_goal').eq('id', user.id).single();
-    if (profile && profile.monthly_goal) {
-        goal = Number(profile.monthly_goal);
+        // Fetch User Goal
+        let goal = 2000; // Default
+        try {
+            const { data: profile, error: profileError } = await supabase.from('profiles').select('monthly_goal').eq('id', user.id).single();
+            if (profileError) console.warn('Goal fetch warning:', profileError.message);
+            if (profile && profile.monthly_goal) {
+                goal = Number(profile.monthly_goal);
+            }
+        } catch (err) {
+            console.warn('Could not fetch goal, using default:', err);
+        }
+
+        // Calc Totals
+        const safeTransactions = transactions || [];
+        const income = safeTransactions.filter(t => t.type === 'income').reduce((acc, t) => acc + Number(t.amount), 0);
+        const expense = safeTransactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + Number(t.amount), 0);
+        const balance = income - expense;
+
+        // Update Cards
+        const elIncome = document.getElementById('summaryIncome');
+        const elExpense = document.getElementById('summaryExpense');
+        const elBalance = document.getElementById('summaryBalance');
+
+        if (elIncome) elIncome.textContent = income.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        if (elExpense) elExpense.textContent = expense.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        if (elBalance) elBalance.textContent = balance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+        // Update Goal
+        const percent = Math.min((expense / goal) * 100, 100);
+        const elGoalSpent = document.getElementById('goalSpent');
+        if (elGoalSpent) elGoalSpent.textContent = expense.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+        const elGoalTarget = document.querySelector('.glass-card.col-span-2 strong:nth-child(2)');
+        if (elGoalTarget) elGoalTarget.textContent = goal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+        const elGoalProgress = document.getElementById('goalProgress');
+        if (elGoalProgress) elGoalProgress.style.width = `${percent}%`;
+
+        const elGoalText = document.getElementById('goalText');
+        if (elGoalText) elGoalText.textContent = `${percent.toFixed(0)}% da meta consumida`;
+
+        // 2. Energy
+        const { data: energy } = await supabase
+            .from('energy_logs')
+            .select('*')
+            .order('year', { ascending: false })
+            .order('month', { ascending: false })
+            .limit(1);
+        const lastEnergy = energy && energy.length ? energy[0] : null;
+        const savings = lastEnergy ? Number(lastEnergy.savings_percent).toFixed(0) + '%' : '0%';
+        const savingsAmount = lastEnergy ? lastEnergy.savings_amount : 0;
+
+        const energyEl = document.getElementById('summaryEnergy');
+        if (energyEl) {
+            energyEl.textContent = savings;
+            energyEl.style.color = savingsAmount >= 0 ? 'var(--success-color)' : 'var(--danger-color)';
+        }
+
+        // 3. Charts
+        renderCharts(safeTransactions);
+    } catch (e) {
+        console.error('Critical Error in loadDashboardData:', e);
+        // Alert user friendlier message if needed, or rely on console
     }
-
-    // Calc Totals
-    const income = transactions ? transactions.filter(t => t.type === 'income').reduce((acc, t) => acc + Number(t.amount), 0) : 0;
-    const expense = transactions ? transactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + Number(t.amount), 0) : 0;
-    const balance = income - expense;
-
-    // Update Cards
-    document.getElementById('summaryIncome').textContent = income.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    document.getElementById('summaryExpense').textContent = expense.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    document.getElementById('summaryBalance').textContent = balance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-
-    // Update Goal
-    const percent = Math.min((expense / goal) * 100, 100);
-    document.getElementById('goalSpent').textContent = expense.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    document.querySelector('.glass-card.col-span-2 strong:nth-child(2)').textContent = goal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); // Update Goal Text
-    document.getElementById('goalProgress').style.width = `${percent}%`;
-    document.getElementById('goalText').textContent = `${percent.toFixed(0)}% da meta consumida`;
-
-    // 2. Energy
-    const { data: energy } = await supabase
-        .from('energy_logs')
-        .select('*')
-        .order('year', { ascending: false })
-        .order('month', { ascending: false })
-        .limit(1);
-    const lastEnergy = energy && energy.length ? energy[0] : null;
-    const savings = lastEnergy ? Number(lastEnergy.savings_percent).toFixed(0) + '%' : '0%';
-    const savingsAmount = lastEnergy ? lastEnergy.savings_amount : 0;
-
-    const energyEl = document.getElementById('summaryEnergy');
-    energyEl.textContent = savings;
-    energyEl.style.color = savingsAmount >= 0 ? 'var(--success-color)' : 'var(--danger-color)';
-
-    // 3. Charts
-    renderCharts(transactions || []);
 }
 
 function renderCharts(transactions) {

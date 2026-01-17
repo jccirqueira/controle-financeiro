@@ -54,13 +54,17 @@ export default function DashboardView() {
                     <p class="text-center text-muted" style="margin-top: 0.5rem; font-size: 0.8rem;">60% da meta consumida</p>
                 </div>
 
-                <div class="glass-card" style="min-height: 400px; padding: 1rem;">
+                <div class="glass-card" style="height: 400px; padding: 1rem; display: flex; flex-direction: column;">
                     <h3 class="mb-4">Fluxo de Caixa</h3>
-                    <canvas id="cashFlowChart"></canvas>
+                    <div style="flex: 1; position: relative; width: 100%; min-height: 0;">
+                        <canvas id="cashFlowChart"></canvas>
+                    </div>
                 </div>
-                <div class="glass-card" style="min-height: 400px; padding: 1rem;">
+                <div class="glass-card" style="height: 400px; padding: 1rem; display: flex; flex-direction: column;">
                     <h3 class="mb-4">Despesas por Categoria</h3>
-                    <canvas id="expensesChart"></canvas>
+                     <div style="flex: 1; position: relative; width: 100%; min-height: 0;">
+                        <canvas id="expensesChart"></canvas>
+                    </div>
                 </div>
             </main>
         </div>
@@ -181,4 +185,3 @@ function renderCharts() {
         }
     });
 }
-

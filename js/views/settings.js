@@ -37,6 +37,13 @@ export default function SettingsView() {
                     </div>
                 </div>
 
+                <!-- Reset Data -->
+                <div class="glass-card">
+                    <h3 class="mb-4" style="color: var(--danger-color);">Zona de Perigo</h3>
+                    <p class="text-muted mb-4">Atenção: Esta ação apagará TODOS os seus lançamentos (Receitas, Despesas, Energia e Metas) e é irreversível.</p>
+                    <button class="btn btn-primary" style="background: var(--danger-color); width: 100%;" id="resetDataBtn"><i class="ri-alert-line"></i> ZERAR DADOS DO APLICATIVO</button>
+                </div>
+
                 <!-- Admin Section -->
                 <div id="adminSection" style="display: none;">
                     <div class="glass-card">
@@ -114,6 +121,23 @@ export async function init() {
     document.getElementById('exportReceitas').addEventListener('click', () => exportCSV('income', 'receitas'));
     document.getElementById('exportDespesas').addEventListener('click', () => exportCSV('expense', 'despesas'));
 
+    // Reset Data Logic
+    document.getElementById('resetDataBtn').addEventListener('click', async () => {
+        if (!confirm('TEM CERTEZA ABSOLUTA? Isso apagará todas as suas receitas, despesas e registros de energia. Não há como desfazer.')) return;
+
+        const userId = user.id;
+
+        // Delete from all user tables (RLS policies will ensure only own data is deleted, but explicit eq is safer)
+        const p1 = supabase.from('transactions').delete().eq('user_id', userId);
+        const p2 = supabase.from('energy_logs').delete().eq('user_id', userId);
+        const p3 = supabase.from('goals').delete().eq('user_id', userId);
+
+        await Promise.all([p1, p2, p3]);
+
+        alert('Todos os dados foram apagados com sucesso.');
+        window.location.hash = 'dashboard';
+    });
+
     async function exportCSV(type, filename) {
         const { data } = await supabase.from('transactions').select('*').eq('type', type);
         if (!data || !data.length) return alert('Sem dados para exportar');
@@ -164,15 +188,14 @@ function initAdminFeatures(supabase) {
         const type = document.getElementById('newCatType').value;
         if (!name) return;
 
-        await supabase.from('categories').insert({ name, type, user_id: null }); // Global category if Created by Admin? Or personal? Schema says "user_id null means global".
-        // If RLS allows insert with null user_id?
-        // My schema: "check (auth.uid() = user_id)" -> Wait, this prevents Global Categories creation by Admin unless I change RLS.
-        // I will assume Admin creates Personal Categories for now, or I'd need to update Schema.
-        // Let's simpler: Admin creates global categories.
-        // Update Schema later if needed. For now let's try insert.
+        const { error } = await supabase.from('categories').insert({ name, type, user_id: null });
 
-        document.getElementById('newCatName').value = '';
-        loadCats();
+        if (error) {
+            alert('Erro ao adicionar categoria: ' + error.message);
+        } else {
+            document.getElementById('newCatName').value = '';
+            loadCats();
+        }
     });
 
     window.delCat = async (id) => {

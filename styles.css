@@ -255,3 +255,10 @@ body {
     border-radius: 6px;
     transition: width 1s ease-in-out;
 }
+
+/* Mobile Menu Tweaks */
+@media (max-width: 768px) {
+    .hide-mobile {
+        display: none;
+    }
+}

@@ -5,7 +5,7 @@ import { getSupabase } from './supabase.js';
 
 const routes = {
     'login': { title: 'Login', view: () => import('./views/login.js') },
-    'dashboard': { title: 'Dashboard', view: () => import('./views/dashboard.js') },
+    'dashboard': { title: 'Dashboard', view: () => import(`./views/dashboard.js?t=${Date.now()}`) },
     'receitas': { title: 'Receitas', view: () => import('./views/transactions.js') },
     'despesas': { title: 'Despesas', view: () => import('./views/transactions.js') },
     'energia': { title: 'Energia', view: () => import('./views/energy.js') },

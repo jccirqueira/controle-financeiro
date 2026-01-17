@@ -190,8 +190,8 @@ async function loadDashboardData() {
         const elGoalSpent = document.getElementById('goalSpent');
         if (elGoalSpent) elGoalSpent.textContent = expense.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-        const elGoalTarget = document.querySelector('.glass-card.col-span-2 strong:nth-child(2)');
-        if (elGoalTarget) elGoalTarget.textContent = goal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        const elGoalAmount = document.getElementById('goalAmount');
+        if (elGoalAmount) elGoalAmount.textContent = goal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
         const elGoalProgress = document.getElementById('goalProgress');
         if (elGoalProgress) elGoalProgress.style.width = `${percent}%`;

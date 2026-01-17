@@ -173,20 +173,57 @@ export async function init() {
     });
 
     async function exportData(type, filename) {
-        const { data } = await supabase.from('transactions').select('*').eq('type', type);
+        const { data } = await supabase.from('transactions')
+            .select('date, amount, description') // Select only required columns
+            .eq('type', type)
+            .order('date', { ascending: false }); // Sort by date
+
         if (!data || !data.length) return alert('Sem dados para exportar');
+
+        // Headers Map
+        const headers = ['Data', 'Valor (R$)', 'Descrição'];
 
         // Create HTML Table for Excel
         let table = `
             <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-            <head><meta charset="UTF-8"></head>
+            <head>
+                <meta charset="UTF-8">
+                <!--[if gte mso 9]>
+                <xml>
+                    <x:ExcelWorkbook>
+                        <x:ExcelWorksheets>
+                            <x:ExcelWorksheet>
+                                <x:Name>${filename}</x:Name>
+                                <x:WorksheetOptions>
+                                    <x:DisplayGridlines/>
+                                </x:WorksheetOptions>
+                            </x:ExcelWorksheet>
+                        </x:ExcelWorksheets>
+                    </x:ExcelWorkbook>
+                </xml>
+                <![endif]-->
+            </head>
             <body>
             <table border="1">
                 <thead>
-                    <tr>${Object.keys(data[0]).map(h => `<th style="background-color: #f0f0f0;">${h}</th>`).join('')}</tr>
+                    <tr>${headers.map(h => `<th style="background-color: #f0f0f0; font-weight: bold;">${h}</th>`).join('')}</tr>
                 </thead>
                 <tbody>
-                    ${data.map(row => `<tr>${Object.values(row).map(c => `<td>${c ?? ''}</td>`).join('')}</tr>`).join('')}
+                    ${data.map(row => {
+            // Format Date (YYYY-MM-DD -> DD/MM/YYYY)
+            const [y, m, d] = row.date.split('-');
+            const dateBr = `${d}/${m}/${y}`;
+
+            // Format Currency (Raw number for Excel is better, let Excel handle format via style if needed, 
+            // but simple text is safer for simple XLS)
+            const amountBr = Number(row.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+
+            return `<tr>
+                            <td>${dateBr}</td>
+                            <td>${amountBr}</td>
+                            <td>${row.description || ''}</td>
+                        </tr>`;
+        }).join('')}
                 </tbody>
             </table>
             </body></html>

@@ -48,7 +48,7 @@ export default function DashboardView() {
                     <h3 class="mb-2">Meta de Gastos Mensal</h3>
                     <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
                         <span class="text-muted">Gasto: <strong class="text-danger" id="goalSpent">R$ 0,00</strong></span>
-                        <span class="text-muted">Meta: <strong>R$ 2.000,00</strong></span>
+                        <span class="text-muted">Meta: <strong id="goalAmount">R$ 2.000,00</strong></span>
                     </div>
                     <div class="progress-bg">
                         <div class="progress-fill" id="goalProgress" style="width: 0%;"></div>
@@ -95,28 +95,38 @@ export default function DashboardView() {
 
 export async function init() {
     console.log('Dashboard Init');
+    try {
+        const user = await getUser();
+        if (!user) console.warn('No user found');
 
-    const user = await getUser();
-    if (!user) console.warn('No user found');
+        document.getElementById('refreshBtn')?.addEventListener('click', () => {
+            loadDashboardData();
+        });
 
-    document.getElementById('refreshBtn')?.addEventListener('click', () => {
-        loadDashboardData();
-    });
+        document.getElementById('logoutBtn')?.addEventListener('click', async () => {
+            await logout();
+        });
 
-    document.getElementById('logoutBtn').addEventListener('click', async () => {
-        await logout();
-    });
+        const themeBtn = document.getElementById('themeToggle');
+        if (themeBtn) {
+            themeBtn.addEventListener('click', () => {
+                const html = document.documentElement;
+                const current = html.getAttribute('data-theme');
+                const next = current === 'dark' ? 'light' : 'dark';
+                html.setAttribute('data-theme', next);
+                themeBtn.innerHTML = next === 'dark' ? '<i class="ri-moon-line"></i>' : '<i class="ri-sun-line"></i>';
+            });
+        }
 
-    const themeBtn = document.getElementById('themeToggle');
-    themeBtn.addEventListener('click', () => {
-        const html = document.documentElement;
-        const current = html.getAttribute('data-theme');
-        const next = current === 'dark' ? 'light' : 'dark';
-        html.setAttribute('data-theme', next);
-        themeBtn.innerHTML = next === 'dark' ? '<i class="ri-moon-line"></i>' : '<i class="ri-sun-line"></i>';
-    });
-
-    await loadDashboardData();
+        await loadDashboardData();
+    } catch (err) {
+        console.error('Error initializing dashboard:', err);
+        // Even if init fails partially, don't crash the whole view if possible.
+        // But if it crashes here, the router catches it. 
+        // We log it so we can debug, but maybe we shouldn't rethrow?
+        // If we don't rethrow, the router thinks it loaded fine. 
+        // Let's try to not rethrow to keep the UI visible (even if broken).
+    }
 }
 
 async function loadDashboardData() {

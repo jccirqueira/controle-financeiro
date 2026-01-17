@@ -42,7 +42,8 @@ export default function DashboardView() {
                 </div>
 
                 <!-- Charts Area -->
-                 <div class="glass-card" style="grid-column: span 2;">
+                <!-- Charts Area -->
+                 <div class="glass-card col-span-2">
                     <h3 class="mb-2">Meta de Gastos Mensal</h3>
                     <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
                         <span class="text-muted">Gasto: <strong class="text-danger">R$ 1.200,50</strong></span>
@@ -54,13 +55,13 @@ export default function DashboardView() {
                     <p class="text-center text-muted" style="margin-top: 0.5rem; font-size: 0.8rem;">60% da meta consumida</p>
                 </div>
 
-                <div class="glass-card" style="height: 400px; padding: 1rem; display: flex; flex-direction: column;">
+                <div class="glass-card col-span-2" style="height: 400px; padding: 1rem; display: flex; flex-direction: column;">
                     <h3 class="mb-4">Fluxo de Caixa</h3>
                     <div style="flex: 1; position: relative; width: 100%; min-height: 0;">
                         <canvas id="cashFlowChart"></canvas>
                     </div>
                 </div>
-                <div class="glass-card" style="height: 400px; padding: 1rem; display: flex; flex-direction: column;">
+                <div class="glass-card col-span-2" style="height: 400px; padding: 1rem; display: flex; flex-direction: column;">
                     <h3 class="mb-4">Despesas por Categoria</h3>
                      <div style="flex: 1; position: relative; width: 100%; min-height: 0;">
                         <canvas id="expensesChart"></canvas>
@@ -76,17 +77,16 @@ export default function DashboardView() {
                 grid-template-columns: repeat(4, 1fr);
                 gap: 1.5rem;
             }
-            .dashboard-grid > .glass-card:nth-last-child(-n+2) { /* Charts */
-                grid-column: span 2; 
-            }
+            
+            .col-span-2 { grid-column: span 2; }
+
             @media (max-width: 1024px) {
                 .dashboard-grid { grid-template-columns: repeat(2, 1fr); }
-                .dashboard-grid > .glass-card:nth-last-child(1) { grid-column: span 2; }
-                .dashboard-grid > .glass-card:nth-last-child(2) { grid-column: span 2; }
             }
+            
             @media (max-width: 768px) {
                 .dashboard-grid { grid-template-columns: 1fr; }
-                .dashboard-grid > .glass-card:nth-last-child(-n+2) { grid-column: span 1; }
+                .col-span-2 { grid-column: span 1; }
             }
         </style>
     `;

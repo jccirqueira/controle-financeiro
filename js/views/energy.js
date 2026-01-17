@@ -169,10 +169,29 @@ export async function init() {
                 <td style="padding: 1rem; color: var(--success-color); font-weight: bold;">R$ ${Number(item.savings_amount || (item.cpfl_amount - item.serena_amount)).toFixed(2)}</td>
                 <td style="padding: 1rem;">${Number(item.savings_percent || ((item.cpfl_amount - item.serena_amount) / item.cpfl_amount * 100)).toFixed(2)}%</td>
                 <td style="padding: 1rem; text-align: right;">
-                    <button class="btn btn-ghost" onclick="window.deleteEnergy('${item.id}')"><i class="ri-delete-bin-line"></i></button>
+                    <button class="btn btn-ghost" onclick="window.editEnergy('${item.id}')"><i class="ri-pencil-line"></i></button>
+                    <button class="btn btn-ghost" style="color: var(--danger-color);" onclick="window.deleteEnergy('${item.id}')"><i class="ri-delete-bin-line"></i></button>
                 </td>
             </tr>
         `).join('');
+
+        window.editEnergy = (id) => {
+            const item = data.find(x => x.id === id);
+            if (!item) return;
+            document.getElementById('energyId').value = item.id;
+            // Format YYYY-MM for input month
+            const m = item.month < 10 ? `0${item.month}` : item.month;
+            document.getElementById('monthRef').value = `${item.year}-${m}`;
+            document.getElementById('cpfl').value = item.cpfl_amount;
+            document.getElementById('serena').value = item.serena_amount;
+
+            // Trigger preview update
+            const event = new Event('input');
+            document.getElementById('cpfl').dispatchEvent(event);
+
+            // Scroll to form
+            document.querySelector('main').scrollIntoView({ behavior: 'smooth' });
+        };
 
         window.deleteEnergy = async (id) => {
             if (confirm('Excluir?')) {

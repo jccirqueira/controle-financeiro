@@ -1,0 +1,19 @@
+# Node
+node_modules/
+
+# Supabase CLI
+.supabase/
+
+# Auditoria — contém dados pessoais (emails, IDs de usuário)
+audit/
+
+# Env / Secrets — nunca commitar
+.env
+.env.*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

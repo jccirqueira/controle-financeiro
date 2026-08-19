@@ -142,7 +142,9 @@ export async function init() {
 
     // State
     let currentPage = 1;
+    let totalPages = 1;
     let currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+    const PAGE_SIZE = 10;
 
     // Elements
     const tableBody = document.getElementById('tableBody');
@@ -152,6 +154,9 @@ export async function init() {
     const cancelBtn = document.getElementById('cancelBtn');
     const form = document.getElementById('transactionForm');
     const categorySelect = document.getElementById('category');
+    const prevPageBtn = document.getElementById('prevPage');
+    const nextPageBtn = document.getElementById('nextPage');
+    const pageInfo = document.getElementById('pageInfo');
 
     // Init Logic
     monthFilter.value = currentMonth;
@@ -161,7 +166,22 @@ export async function init() {
     // Listeners
     monthFilter.addEventListener('change', (e) => {
         currentMonth = e.target.value;
+        currentPage = 1;
         loadTransactions();
+    });
+
+    prevPageBtn.addEventListener('click', () => {
+        if (currentPage > 1) {
+            currentPage--;
+            loadTransactions();
+        }
+    });
+
+    nextPageBtn.addEventListener('click', () => {
+        if (currentPage < totalPages) {
+            currentPage++;
+            loadTransactions();
+        }
     });
 
     addBtn.addEventListener('click', () => {
@@ -220,17 +240,21 @@ export async function init() {
     async function loadTransactions() {
         tableBody.innerHTML = '<tr><td colspan="6" class="text-center" style="padding: 2rem;">Carregando...</td></tr>';
 
-        // Date Range
+        // Date Range: início do mês até o primeiro dia do mês seguinte
+        // (lt evita perder lançamentos em meses com menos de 31 dias)
+        const [filterYear, filterMonth] = currentMonth.split('-').map(Number);
         const start = `${currentMonth}-01`;
-        const end = `${currentMonth}-31`; // Loose end date
+        const firstDayNextMonth = new Date(filterYear, filterMonth, 1);
+        const startOfNextMonth = `${firstDayNextMonth.getFullYear()}-${String(firstDayNextMonth.getMonth() + 1).padStart(2, '0')}-01`;
 
-        const { data, error } = await supabase
+        const { data, count, error } = await supabase
             .from('transactions')
-            .select(`*, categories(name)`)
+            .select(`*, categories(name)`, { count: 'exact' })
             .eq('type', type)
             .gte('date', start)
-            .lte('date', end)
-            .order('date', { ascending: false });
+            .lt('date', startOfNextMonth)
+            .order('date', { ascending: false })
+            .range((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE - 1);
 
         if (error) {
             console.error(error);
@@ -238,15 +262,28 @@ export async function init() {
             return;
         }
 
-        if (data.length === 0) {
+        // Total do mês (consulta leve, apenas valores — independente da página)
+        const { data: totals } = await supabase
+            .from('transactions')
+            .select('amount')
+            .eq('type', type)
+            .gte('date', start)
+            .lt('date', startOfNextMonth);
+
+        const total = (totals || []).reduce((acc, curr) => acc + Number(curr.amount), 0);
+        document.getElementById('totalDisplay').textContent = total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+        // Paginação
+        totalPages = Math.max(Math.ceil((count || 0) / PAGE_SIZE), 1);
+        if (currentPage > totalPages) currentPage = totalPages;
+        pageInfo.textContent = `Página ${currentPage} de ${totalPages}`;
+        prevPageBtn.disabled = currentPage <= 1;
+        nextPageBtn.disabled = currentPage >= totalPages;
+
+        if (!data || data.length === 0) {
             tableBody.innerHTML = '<tr><td colspan="6" class="text-center text-muted" style="padding: 2rem;">Nenhum registro encontrado</td></tr>';
-            document.getElementById('totalDisplay').textContent = 'R$ 0,00';
             return;
         }
-
-        // Calculate Total
-        const total = data.reduce((acc, curr) => acc + Number(curr.amount), 0);
-        document.getElementById('totalDisplay').textContent = total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
         // Render Rows
         tableBody.innerHTML = data.map(t => `

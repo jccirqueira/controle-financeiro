@@ -140,18 +140,20 @@ async function loadDashboardData() {
         const y = date.getFullYear();
         const m = String(date.getMonth() + 1).padStart(2, '0');
 
-        // Construct simplified date strings for Postgres DATE column comparison
+        // Date range: início do mês até o primeiro dia do mês seguinte
+        // (lt evita perder lançamentos em meses com menos de 31 dias)
         const startOfMonth = `${y}-${m}-01`;
-        const endOfMonth = `${y}-${m}-31`; // Works for basic filtering
+        const firstDayNextMonth = new Date(y, date.getMonth() + 1, 1);
+        const startOfNextMonth = `${firstDayNextMonth.getFullYear()}-${String(firstDayNextMonth.getMonth() + 1).padStart(2, '0')}-01`;
 
-        console.log('Fetching dashboard data for:', startOfMonth, 'to', endOfMonth);
+        console.log('Fetching dashboard data for:', startOfMonth, 'to', startOfNextMonth);
 
         // Fetch Transactions with Category Name
         const { data: transactions, error } = await supabase
             .from('transactions')
             .select('*, categories(name)') // Simplified single line query
             .gte('date', startOfMonth)
-            .lte('date', endOfMonth);
+            .lt('date', startOfNextMonth);
 
         if (error) {
             console.error('Error fetching transactions:', error);
